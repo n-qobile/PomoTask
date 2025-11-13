@@ -40,6 +40,17 @@ router.post("/", async (req, res) => {
     // parse the AI's response
     let aiMessage = aiResponse.choices?.[0]?.message?.content;
 
+    if (typeof aiMessage !== "string") {
+      console.error("AI response missing or invalid:", aiResponse);
+      aiMessage = '{"tm":"30 minutes","rem":"Check task details"}'; // fallback
+    } else {
+      // strip markdown code blocks if present
+      aiMessage = aiMessage
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "")
+        .trim();
+    }
+
     // strip markdown code blocks if present
     aiMessage = aiMessage
       .replace(/```json\n?/g, "")
@@ -56,10 +67,10 @@ router.post("/", async (req, res) => {
 
       // validate only allowed keys are present
       const keys = Object.keys(taskContext);
-      const invalidKeys = keys.filter(key => !allowedKeys.includes(key));
+      const invalidKeys = keys.filter((key) => !allowedKeys.includes(key));
 
       if (invalidKeys.length > 0) {
-        invalidKeys.forEach(key => delete taskContext[key]);
+        invalidKeys.forEach((key) => delete taskContext[key]);
       }
 
       // ensure to  have at least 2 fields
