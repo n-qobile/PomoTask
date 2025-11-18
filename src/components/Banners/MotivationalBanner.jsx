@@ -19,9 +19,7 @@ const MotivationalBanner = ({ isVisible, trigger, taskTitle }) => {
     try {
       const params = taskTitle ? { task: taskTitle } : {};
       const response = await axios.get(
-        `${
-          import.meta.env.VITE_API_URL || "https://pomotask.onrender.com"
-        }/api/motivate`,
+        `http://pomotask-back.eu-north-1.elasticbeanstalk.com/api/motivate`,
         { params }
       );
       if (response.data.success) {

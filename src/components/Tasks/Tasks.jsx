@@ -27,7 +27,7 @@ const Tasks = ({
   const [categorizingTasks, setCategorizingTasks] = useState(new Set());
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editedCategory, setEditedCategory] = useState("");
-
+  const apiUrl = "http://pomotask-back.eu-north-1.elasticbeanstalk.com";
 
   const labelMappings = {
     tm: "Time needed",
@@ -44,12 +44,12 @@ const Tasks = ({
     setShowForm(true);
   };
 
-  const handleDelete = id => {
-    const updatedTask = tasks.filter(task => task.id !== id);
+  const handleDelete = (id) => {
+    const updatedTask = tasks.filter((task) => task.id !== id);
     setTasks(updatedTask);
 
     // clean up expanded state
-    setExpandedTasks(prev => {
+    setExpandedTasks((prev) => {
       const newSet = new Set(prev);
       newSet.delete(id);
       return newSet;
@@ -64,11 +64,11 @@ const Tasks = ({
     setEditedTitle(currentTitle);
   };
 
-  const handleToggleStatus = id => {
-    const task = tasks.find(t => t.id === id);
+  const handleToggleStatus = (id) => {
+    const task = tasks.find((t) => t.id === id);
     const wasPending = task.status === "pending";
 
-    const updatedTasks = tasks.map(task =>
+    const updatedTasks = tasks.map((task) =>
       task.id === id
         ? { ...task, status: task.status === "done" ? "pending" : "done" }
         : task
@@ -81,8 +81,8 @@ const Tasks = ({
     }
   };
 
-  const handleSaveEdit = id => {
-    const updatedTasks = tasks.map(task =>
+  const handleSaveEdit = (id) => {
+    const updatedTasks = tasks.map((task) =>
       task.id === id ? { ...task, title: editedTitle } : task
     );
     setTasks(updatedTasks);
@@ -90,11 +90,11 @@ const Tasks = ({
     setEditedTitle("");
   };
 
-  const handleAISuggestions = async taskId => {
-    const task = tasks.find(t => t.id === taskId);
+  const handleAISuggestions = async (taskId) => {
+    const task = tasks.find((t) => t.id === taskId);
 
     // Toggle expansion state
-    setExpandedTasks(prev => {
+    setExpandedTasks((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(taskId)) {
         newSet.delete(taskId);
@@ -110,23 +110,21 @@ const Tasks = ({
     }
 
     // Fetch AI suggestions
-    setLoadingTasks(prev => new Set(prev).add(taskId));
+    setLoadingTasks((prev) => new Set(prev).add(taskId));
 
     try {
-      const response = await axios.post(
-        `${
-          import.meta.env.VITE_API_URL || "https://pomotask.onrender.com"
-        }/api/clarify`,
-        {
-          task: task.title,
-        }
+      const response = await axios.get(
+        `${apiUrl}/api/clarify?task=${encodeURIComponent(task.title)}`
       );
 
-      if (response.data.success && response.data.task_context) {
-        const updatedTasks = tasks.map(t =>
-          t.id === taskId
-            ? { ...t, aiSuggestions: response.data.task_context }
-            : t
+      if (response.data.success && response.data.description) {
+        // Backend returns plain text description, but frontend expects structured JSON
+        // For now, display the description as a simple text suggestion
+        const aiSuggestions = {
+          description: response.data.description
+        };
+        const updatedTasks = tasks.map((t) =>
+          t.id === taskId ? { ...t, aiSuggestions } : t
         );
         setTasks(updatedTasks);
       }
@@ -135,13 +133,13 @@ const Tasks = ({
       alert("Failed to get AI suggestions. Please try again.");
 
       // remove from expanded if error occurs
-      setExpandedTasks(prev => {
+      setExpandedTasks((prev) => {
         const newSet = new Set(prev);
         newSet.delete(taskId);
         return newSet;
       });
     } finally {
-      setLoadingTasks(prev => {
+      setLoadingTasks((prev) => {
         const newSet = new Set(prev);
         newSet.delete(taskId);
         return newSet;
@@ -149,7 +147,7 @@ const Tasks = ({
     }
   };
 
-  const handleSubmit = e => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (!newTask.trim()) return;
 
@@ -166,32 +164,64 @@ const Tasks = ({
     setNewTask("");
     setShowForm(false);
   };
+function extractJSONFromDescription(desc) {
+  if (!desc || typeof desc !== "string") return null;
 
-  const handleCategorize = async (taskId) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
+  // strip Markdown formatting like ```json and ```
+  const cleaned = desc.replace(/```json|```/gi, "").trim();
 
-    setCategorizingTasks(prev => new Set(prev).add(taskId));
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+}
 
-    try {
-      const response = await axios.get(`http://localhost:3000/api/categorize?task=${encodeURIComponent(task.title)}`);
-      if (response.data.success) {
-        const updatedTasks = tasks.map(t =>
-          t.id === taskId ? { ...t, category: response.data.category } : t
-        );
-        setTasks(updatedTasks);
-      }
-    } catch (error) {
-      console.error("Error categorizing task:", error);
-      alert("Failed to categorize task. Please try again.");
-    } finally {
-      setCategorizingTasks(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(taskId);
-        return newSet;
-      });
+const handleCategorize = async (taskId) => {
+  const task = tasks.find((t) => t.id === taskId);
+  if (!task) return;
+
+  setCategorizingTasks((prev) => new Set(prev).add(taskId));
+
+  try {
+    const response = await axios.get(
+      `${apiUrl}/api/categorize?task=${encodeURIComponent(task.title)}`
+    );
+
+    if (response.data.success) {
+      // Extract embedded JSON if required
+      const descriptionData = extractJSONFromDescription(response.data.description);
+
+      // merged result object (your requested structure)
+      const parsed = {
+        original_task: response.data.original_task,
+        category:
+          response.data.category || descriptionData?.category || "Uncategorized",
+        confidence:
+          response.data.confidence || descriptionData?.confidence || null,
+        rationale:
+          response.data.rationale || descriptionData?.rationale || null,
+        alternatives: descriptionData?.alternatives ?? [],
+      };
+
+      console.log("Parsed category data:", parsed);
+
+      const updatedTasks = tasks.map((t) =>
+        t.id === taskId ? { ...t, category: parsed.category, metadata: parsed } : t
+      );
+
+      setTasks(updatedTasks);
     }
-  };
+  } catch (error) {
+    console.error("Error categorizing task:", error);
+  } finally {
+    setCategorizingTasks((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(taskId);
+      return newSet;
+    });
+  }
+};
 
   const handleEditCategory = (id, currentCategory) => {
     setEditingCategoryId(id);
@@ -212,7 +242,7 @@ const Tasks = ({
     e.dataTransfer.setData("text/plain", tasks[index].id.toString());
   };
 
-  const handleDragOver = e => {
+  const handleDragOver = (e) => {
     e.preventDefault();
   };
 
@@ -250,7 +280,7 @@ const Tasks = ({
               <input
                 type="text"
                 value={newTask}
-                onChange={e => setNewTask(e.target.value)}
+                onChange={(e) => setNewTask(e.target.value)}
                 placeholder="What needs to be done?"
                 className={styles.taskInput}
                 maxLength="50"
@@ -290,18 +320,18 @@ const Tasks = ({
                 <div
                   className={styles.task}
                   draggable
-                  onDragStart={e => handleDragStart(e, index)}
+                  onDragStart={(e) => handleDragStart(e, index)}
                   onDragOver={handleDragOver}
-                  onDrop={e => handleDrop(e, index)}
+                  onDrop={(e) => handleDrop(e, index)}
                 >
                   <div className={styles.leftSide}>
                     {editTaskId === task.id ? (
                       <input
                         type="text"
                         value={editedTitle}
-                        onChange={e => setEditedTitle(e.target.value)}
+                        onChange={(e) => setEditedTitle(e.target.value)}
                         onBlur={() => handleSaveEdit(task.id)}
-                        onKeyDown={e => {
+                        onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             handleSaveEdit(task.id);
                           } else if (e.key === "Escape") {
@@ -327,7 +357,9 @@ const Tasks = ({
                           {editingCategoryId === task.id ? (
                             <select
                               value={editedCategory}
-                              onChange={(e) => setEditedCategory(e.target.value)}
+                              onChange={(e) =>
+                                setEditedCategory(e.target.value)
+                              }
                               onBlur={() => handleSaveCategory(task.id)}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
@@ -350,7 +382,11 @@ const Tasks = ({
                               <option value="Other">Other</option>
                             </select>
                           ) : (
-                            <span onClick={() => handleEditCategory(task.id, task.category)}>
+                            <span
+                              onClick={() =>
+                                handleEditCategory(task.id, task.category)
+                              }
+                            >
                               Category: {task.category}
                             </span>
                           )}
@@ -414,7 +450,7 @@ const Tasks = ({
                           ([key, value]) => (
                             <div key={key} className={styles.suggestionItem}>
                               <span className={styles.suggestionLabel}>
-                                {labelMappings[key]}:
+                                {key === "description" ? "Description" : (labelMappings[key] || key)}:
                               </span>
                               <span className={styles.suggestionValue}>
                                 {value}
@@ -425,7 +461,7 @@ const Tasks = ({
                       </div>
                     ) : null}
                   </div>
-                )}
+                )}               
               </div>
             ))
           )}
