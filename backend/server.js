@@ -22,8 +22,8 @@ app.use(cors({
     // Allow Azure Static Web Apps domains
     if (origin.includes('azurestaticapps.net')) return callback(null, true);
 
-    // Allow your specific Azure domain if known
-    // if (origin === 'https://your-azure-domain.azurestaticapps.net') return callback(null, true);
+    // Allow your specific Azure domain
+    if (origin === 'https://calm-cliff-0b992cc03.azurestaticapps.net') return callback(null, true);
 
     // Reject other origins
     return callback(new Error('Not allowed by CORS'));
