@@ -13,23 +13,23 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    // Allow localhost for development
-    if (origin.includes('localhost')) return callback(null, true);
+    const allowedOrigins = [
+      'localhost',
+      'azurestaticapps.net',
+      'elasticbeanstalk.com', 
+    ];
 
-    // Allow Azure Static Web Apps domains
-    if (origin.includes('azurestaticapps.net')) return callback(null, true);
+    if (allowedOrigins.some(domain => origin.includes(domain))) {
+      return callback(null, true);
+    }
 
-    // Allow your specific Azure domain
-    if (origin === 'https://calm-cliff-0b992cc03.azurestaticapps.net') return callback(null, true);
-
-    // Reject other origins
-    return callback(new Error('Not allowed by CORS'));
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
-  credentials: true
+  credentials: true,
 }));
+
 app.use(express.json());
 
 // Health check endpoint
