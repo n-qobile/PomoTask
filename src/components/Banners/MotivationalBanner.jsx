@@ -18,7 +18,7 @@ const MotivationalBanner = ({ isVisible, trigger, taskTitle }) => {
     setError(null);
     try {
       const params = taskTitle ? { task: taskTitle } : {};
-      const apiUrl = import.meta.env.VITE_API_URL || "http://pomotask-back.eu-north-1.elasticbeanstalk.com";
+      const apiUrl = import.meta.env.VITE_API_URL || "https://pomotask-back.eu-north-1.elasticbeanstalk.com";
       const response = await axios.get(
         `${apiUrl}/api/motivate`,
         { params }

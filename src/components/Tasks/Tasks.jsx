@@ -27,7 +27,7 @@ const Tasks = ({
   const [categorizingTasks, setCategorizingTasks] = useState(new Set());
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editedCategory, setEditedCategory] = useState("");
-  const apiUrl = import.meta.env.VITE_API_URL || "http://pomotask-back.eu-north-1.elasticbeanstalk.com";
+  const apiUrl = import.meta.env.VITE_API_URL || "https://pomotask-back.eu-north-1.elasticbeanstalk.com";
 
   const labelMappings = {
     tm: "Time needed",
