@@ -23,7 +23,7 @@ app.use(cors({
     if (origin.includes('azurestaticapps.net')) return callback(null, true);
 
     // Allow your specific Azure domain
-    if (origin === 'https://calm-cliff-0b992cc03.azurestaticapps.net') return callback(null, true);
+    if (origin === 'https://calm-cliff-0b992cc03.3.azurestaticapps.net/') return callback(null, true);
 
     // Reject other origins
     return callback(new Error('Not allowed by CORS'));
